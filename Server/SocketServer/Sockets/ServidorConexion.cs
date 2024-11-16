@@ -31,6 +31,10 @@ namespace Sockets
 
         public delegate void SeRecibieronDatosEventHandler(string pDatos);
 
+        int jugador;
+
+        bool autorizarJugador;
+
 
         BLMetodos bl = new BLMetodos();
 
@@ -80,6 +84,7 @@ namespace Sockets
                         cliente.clienteTCP = Escuchador.AcceptTcpClient();
                         cliente.stream = cliente.clienteTCP.GetStream();
                         cliente.numCliente = 1;
+                        cliente.miTurno = false;
                         clientesInterfaz.AgregarCliente(cliente);
                     }
                     else if (clientesInterfaz.Count() == 1)
@@ -88,9 +93,10 @@ namespace Sockets
                         cliente.clienteTCP = Escuchador.AcceptTcpClient();
                         cliente.stream = cliente.clienteTCP.GetStream();
                         cliente.numCliente = 2;
+                        cliente.miTurno = false;
                         clientesInterfaz.AgregarCliente(cliente);
 
-                        bl.eliminarDatosTabla();
+                        //bl.eliminarDatosTabla();
                         break;
                     }
                 }
@@ -123,18 +129,15 @@ namespace Sockets
 
                             string mDatosRecibidos = Encoding.UTF8.GetString(mBytes, 0, bytesRead);
 
-                            List<Datos> objetoRecibido = JsonConvert.DeserializeObject<List<Datos>>(mDatosRecibidos);
-
-                            if(inicializacion)
-                            {
-                                bl.pasarAInsertar(objetoRecibido);
-                            }
-
-
-                            //SeRecibieronDatos.Invoke(objetoRecibido[0].x.ToString());
+                            ConexionLogicaDeJuego(cliente, mDatosRecibidos);
                         }
 
-                        EnviarMensaje(cliente.clienteTCP, "Hola jugador" + cliente.numCliente);
+                        if (jugador == cliente.numCliente && autorizarJugador)
+                        {
+                            cliente.miTurno = !cliente.miTurno;
+                            autorizarJugador = false;
+                            //Enviar mensaje para activar boton e indicarturno de jugador correspondiente
+                        }
                     }
                     inicializacion = false;
 
@@ -161,16 +164,36 @@ namespace Sockets
             }
         }
 
-        public void EnviarMensaje(TcpClient cliente, string mensaje)
+        void ConexionLogicaDeJuego(Cliente cliente, string mDatosRecibidos)
         {
-            if (cliente != null && cliente.Connected)
+            if (inicializacion)
             {
-                NetworkStream stream = cliente.GetStream();
-                if (stream.CanWrite)
+                List<Datos> objetoRecibido = JsonConvert.DeserializeObject<List<Datos>>(mDatosRecibidos);
+                //bl.pasarAInsertar(objetoRecibido);
+                EnviarMensaje(cliente.clienteTCP, "Hola jugador" + cliente.numCliente);
+                if (cliente.numCliente == 1)
                 {
-                    byte[] datos = Encoding.ASCII.GetBytes(mensaje);
-                    stream.Write(datos, 0, datos.Length);
+                    //Enviar mensaje para activar boton e indicarturno de jugador 1
                 }
+                else
+                {
+                    cliente.miTurno = true;
+                }
+            }
+            else
+            {
+                if (cliente.numCliente == 1 && cliente.miTurno)
+                {
+                    jugador = 2;
+                    cliente.miTurno = false;
+                }
+                else if (cliente.numCliente == 2 && cliente.miTurno)
+                {
+                    jugador = 1;
+                    cliente.miTurno = false;
+                }
+                //Enviar mensaje de info de partida
+                autorizarJugador = true;
             }
         }
 
@@ -195,5 +218,35 @@ namespace Sockets
                 cliente = null;
             }
         }
+
+        #region metodos de envio
+        public void EnviarMensaje(TcpClient cliente, Datos mensaje)
+        {
+            if (cliente != null && cliente.Connected)
+            {
+                NetworkStream stream = cliente.GetStream();
+                if (stream.CanWrite)
+                {
+                    string serializacion = JsonConvert.SerializeObject(mensaje, Formatting.Indented);
+                    byte[] datos = Encoding.ASCII.GetBytes(serializacion);
+                    stream.Write(datos, 0, datos.Length);
+                }
+            }
+        }
+
+        public void EnviarMensaje(TcpClient cliente, string mensaje)
+        {
+            if (cliente != null && cliente.Connected)
+            {
+                NetworkStream stream = cliente.GetStream();
+                if (stream.CanWrite)
+                {
+                    byte[] datos = Encoding.ASCII.GetBytes(mensaje);
+                    stream.Write(datos, 0, datos.Length);
+                }
+            }
+        }
+
+        #endregion
     }
 }

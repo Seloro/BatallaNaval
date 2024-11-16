@@ -103,10 +103,6 @@ namespace Socket
                             if (DatosRecibidos != null)
                                 DatosRecibidos.Invoke(mDatosRecibidos);
                         }
-
-
-
-
                     }
                     if (SocketDesconectado != null)
                         SocketDesconectado.Invoke();
@@ -125,16 +121,6 @@ namespace Socket
                 }
             }
         }
-
-        public void EnviarMensaje(string mensaje)
-        {
-            if (NetworkStream != null && NetworkStream.CanWrite)
-            {
-                byte[] datos = Encoding.ASCII.GetBytes(mensaje);
-                NetworkStream.Write(datos, 0, datos.Length);
-            }
-        }
-
 
         public void LiberarTodo()
         {
@@ -162,5 +148,28 @@ namespace Socket
                 thread = null;
             }
         }
+
+        #region Metodo de envio
+
+        public void EnviarMensaje(Datos mensaje)
+        {
+            if (NetworkStream != null && NetworkStream.CanWrite)
+            {
+                string serializacion = JsonConvert.SerializeObject(mensaje, Formatting.Indented);
+                byte[] datos = Encoding.ASCII.GetBytes(serializacion);
+                NetworkStream.Write(datos, 0, datos.Length);
+            }
+        }
+
+        public void EnviarMensaje(string mensaje)
+        {
+            if (NetworkStream != null && NetworkStream.CanWrite)
+            {
+                byte[] datos = Encoding.ASCII.GetBytes(mensaje);
+                NetworkStream.Write(datos, 0, datos.Length);
+            }
+        }
+
+        #endregion
     }
 }

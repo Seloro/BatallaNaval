@@ -15,5 +15,7 @@ namespace BE
         public NetworkStream stream;
 
         public int numCliente;
+
+        public bool miTurno;
     }
 }
